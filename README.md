@@ -1,5 +1,3 @@
-Here’s a sample README.md file for your tournament simulator project:
-
 # Tournament Simulator
 
 A PyQt5-based application to simulate a Swiss-style tournament. The application allows users to generate team pairings based on similar scores, simulate match results, and view categorized standings. The tournament simulation includes probability-based match outcomes for added realism.
