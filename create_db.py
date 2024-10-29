@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 def create_database():
     # List of teams to be inserted into the database
@@ -100,7 +101,7 @@ def create_database():
         {"Rank": 95, "Team": "Alavés", "Ranking": 8},
         {"Rank": 96, "Team": "Getafe", "Ranking": 9},
     ]
-    conn = sqlite3.connect('tournament.db')
+    conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
     cursor = conn.cursor()
 
     # Drop tables if they exist to recreate with new schema

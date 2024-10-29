@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+import os
 import random
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel,
@@ -42,7 +43,7 @@ class TournamentGUI(QWidget):
         self.setLayout(self.layout)
 
     def create_pairings(self):
-        conn = sqlite3.connect('tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
         cursor = conn.cursor()
         
         # Fetch teams with their points
@@ -61,7 +62,7 @@ class TournamentGUI(QWidget):
             self.result_area.setText(f"Round {last_round} was not simulated:\n{pairings_text}")
             return
         
-        if last_round is 8:
+        if last_round == 8:
             self.result_area.setText("All rounds have been created")
             return
         
@@ -120,7 +121,7 @@ class TournamentGUI(QWidget):
         return max(0, int(random.gauss(goal_average, deviation)))
 
     def simulate_match(self):
-        conn = sqlite3.connect('tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
         cursor = conn.cursor()
         cursor.execute('''
         SELECT 
@@ -201,7 +202,7 @@ class TournamentGUI(QWidget):
         self.result_area.setText("\n".join(results))
 
     def show_standings(self):
-        conn = sqlite3.connect('tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
         cursor = conn.cursor()
         cursor.execute('SELECT name, points FROM standings ORDER BY points DESC')
         standings = cursor.fetchall()
@@ -224,7 +225,7 @@ class TournamentGUI(QWidget):
         self.result_area.setText(f"Champions League:\n{cl_text}\n\nEuropa League:\n{el_text}\n\nConference League:\n{conf_text}\n\nRelegation:\n{out_text}")
 
     def show_all_pairings(self):
-        conn = sqlite3.connect('tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
         cursor = conn.cursor()
         cursor.execute('''
         SELECT 
