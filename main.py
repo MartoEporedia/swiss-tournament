@@ -11,6 +11,13 @@ from create_db import create_database
 class TournamentGUI(QWidget):
     def __init__(self):
         super().__init__()
+
+        # Check if the TOURNAMENT_DB environment variable is set
+        if 'TOURNAMENT_DB' not in os.environ:
+            os.environ['TOURNAMENT_DB'] = 'tournament.db'
+
+        self._check_db()
+
         self.setWindowTitle('Tournament Manager')
         self.setGeometry(100, 100, 400, 300)
         
@@ -43,7 +50,7 @@ class TournamentGUI(QWidget):
         self.setLayout(self.layout)
 
     def create_pairings(self):
-        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
         cursor = conn.cursor()
         
         # Fetch teams with their points
@@ -121,7 +128,7 @@ class TournamentGUI(QWidget):
         return max(0, int(random.gauss(goal_average, deviation)))
 
     def simulate_match(self):
-        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
         cursor = conn.cursor()
         cursor.execute('''
         SELECT 
@@ -202,7 +209,7 @@ class TournamentGUI(QWidget):
         self.result_area.setText("\n".join(results))
 
     def show_standings(self):
-        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
         cursor = conn.cursor()
         cursor.execute('SELECT name, points FROM standings ORDER BY points DESC')
         standings = cursor.fetchall()
@@ -225,7 +232,7 @@ class TournamentGUI(QWidget):
         self.result_area.setText(f"Champions League:\n{cl_text}\n\nEuropa League:\n{el_text}\n\nConference League:\n{conf_text}\n\nRelegation:\n{out_text}")
 
     def show_all_pairings(self):
-        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
         cursor = conn.cursor()
         cursor.execute('''
         SELECT 
@@ -247,6 +254,14 @@ class TournamentGUI(QWidget):
 
         pairings_text = "\n".join([f"Round {row[0]}: {row[1]} {row[2]} - {row[3]} {row[4]}" for row in pairings])
         self.result_area.setText(pairings_text)
+
+    def _check_db(self):
+        conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
+        cursor = conn.cursor()
+        cursor.execute('SELECT name FROM sqlite_master WHERE (type="table" AND name="teams") AND (type="table" AND name="ranking") AND (type="table" AND name="standings")')
+        if cursor.fetchone() is None:
+            create_database()
+        conn.close()
 
 if __name__ == '__main__':
     app = QApplication([])

@@ -2,6 +2,12 @@ import sqlite3
 import os
 
 def create_database():
+
+
+    # Check if the TOURNAMENT_DB environment variable is set
+    if 'TOURNAMENT_DB' not in os.environ:
+        os.environ['TOURNAMENT_DB'] = 'tournament.db'
+        
     # List of teams to be inserted into the database
     teams = [
         {"Rank": 1, "Team": "Manchester City", "Ranking": 148},
@@ -101,9 +107,9 @@ def create_database():
         {"Rank": 95, "Team": "Alavés", "Ranking": 8},
         {"Rank": 96, "Team": "Getafe", "Ranking": 9},
     ]
-    conn = sqlite3.connect(os.environ['TOURNAMENT_DB'] if 'TOURNAMENT_DB' in os.environ else 'tournament.db')
+    conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
     cursor = conn.cursor()
-
+    
     # Drop tables if they exist to recreate with new schema
     cursor.execute('DROP TABLE IF EXISTS teams')
     cursor.execute('DROP TABLE IF EXISTS pairings')
