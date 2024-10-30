@@ -14,8 +14,8 @@ A PyQt5-based application to simulate a Swiss-style tournament. The application 
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/tournament-simulator.git
-   cd tournament-simulator
+   git clone https://github.com/MartoEporedia/swiss-tournament.git
+   cd swiss-tournament
    ```
 
 2.	**Install the dependencies**:
