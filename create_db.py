@@ -1,15 +1,8 @@
 import sqlite3
 import os
 
-def create_database():
-
-
-    # Check if the TOURNAMENT_DB environment variable is set
-    if 'TOURNAMENT_DB' not in os.environ:
-        os.environ['TOURNAMENT_DB'] = 'tournament.db'
-        
-    # List of teams to be inserted into the database
-    teams = [
+# List of teams to be inserted into the database
+teams = [
         {"Rank": 1, "Team": "Manchester City", "Ranking": 148},
         {"Rank": 2, "Team": "Bayern Monaco", "Ranking": 144},
         {"Rank": 3, "Team": "Real Madrid", "Ranking": 136},
@@ -106,7 +99,13 @@ def create_database():
         {"Rank": 94, "Team": "Celta Vigo", "Ranking": 8},
         {"Rank": 95, "Team": "Alavés", "Ranking": 8},
         {"Rank": 96, "Team": "Getafe", "Ranking": 9},
-    ]
+]
+
+def create_database():
+    # Check if the TOURNAMENT_DB environment variable is set
+    if 'TOURNAMENT_DB' not in os.environ:
+        os.environ['TOURNAMENT_DB'] = 'tournament.db'
+
     conn = sqlite3.connect(os.environ['TOURNAMENT_DB'])
     cursor = conn.cursor()
     
