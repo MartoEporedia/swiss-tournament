@@ -187,6 +187,8 @@ async function loadStandings() {
         html += '<th>GF</th>';
         html += '<th>GA</th>';
         html += '<th>GD</th>';
+        html += '<th title="Home games">🏠</th>';
+        html += '<th title="Away games">✈️</th>';
         html += '<th>Pts</th>';
         html += '</tr></thead><tbody>';
 
@@ -201,6 +203,8 @@ async function loadStandings() {
             html += `<td>${team.goals_for}</td>`;
             html += `<td>${team.goals_against}</td>`;
             html += `<td>${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}</td>`;
+            html += `<td>${team.home_games || 0}</td>`;
+            html += `<td>${team.away_games || 0}</td>`;
             html += `<td class="team-stats"><strong>${team.points}</strong></td>`;
             html += '</tr>';
         });
@@ -243,13 +247,17 @@ async function loadMatches() {
             rounds[round].forEach(match => {
                 const simulated = match.simulated === 1;
                 const cardClass = simulated ? 'match-card' : 'match-card unsimulated';
+                const team1_home = match.team1_home === 1;
 
                 html += `<div class="${cardClass}">`;
                 html += '<div class="match-teams">';
 
                 // Team 1
                 html += '<div class="match-team">';
-                html += `<div class="match-team-name">${match.team1}</div>`;
+                html += '<div class="match-team-name">';
+                html += team1_home ? '🏠 ' : '✈️ ';
+                html += match.team1;
+                html += '</div>';
                 html += `<div class="match-ranking">Ranking: ${match.team1_ranking}</div>`;
                 html += '</div>';
 
@@ -262,7 +270,10 @@ async function loadMatches() {
 
                 // Team 2
                 html += '<div class="match-team">';
-                html += `<div class="match-team-name">${match.team2}</div>`;
+                html += '<div class="match-team-name">';
+                html += !team1_home ? '🏠 ' : '✈️ ';
+                html += match.team2;
+                html += '</div>';
                 html += `<div class="match-ranking">Ranking: ${match.team2_ranking}</div>`;
                 html += '</div>';
 

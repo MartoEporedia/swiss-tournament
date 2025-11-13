@@ -9,6 +9,7 @@ import os
 from database import Database
 from simulator import MatchSimulator
 from create_db import teams as initial_teams
+from uefa_rankings import fetch_latest_rankings
 
 
 app = Flask(__name__)
@@ -36,22 +37,32 @@ def init_tournament():
     try:
         db.init_db()
 
-        # Load teams from create_db.py
+        # Try to fetch latest UEFA rankings online
+        print("Fetching latest UEFA rankings...")
+        try:
+            online_teams = fetch_latest_rankings()
+            teams_source = "online (UEFA)"
+        except:
+            print("Failed to fetch online rankings, using fallback data")
+            online_teams = initial_teams
+            teams_source = "local fallback"
+
+        # Load teams
         teams_data = [
             {
                 'rank': team['Rank'],
                 'name': team['Team'],
                 'ranking': team['Ranking'],
-                'country': ''
+                'country': team.get('country', '')
             }
-            for team in initial_teams
+            for team in online_teams
         ]
 
         db.load_teams(teams_data)
 
         return jsonify({
             'success': True,
-            'message': f'Tournament initialized with {len(teams_data)} teams'
+            'message': f'Tournament initialized with {len(teams_data)} teams from {teams_source}'
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -118,7 +129,7 @@ def get_pairings():
 
 @app.route('/api/pairings/create', methods=['POST'])
 def create_pairings():
-    """Create pairings for the next round using Swiss system"""
+    """Create pairings for the next round using Swiss system with home/away balance"""
     try:
         # Check if there are unsimulated matches
         unsimulated = db.get_unsimulated_pairings()
@@ -140,82 +151,132 @@ def create_pairings():
             }), 400
 
         standings = db.get_standings()
-
-        # Swiss pairing algorithm: pair teams with similar points
-        paired_teams = set()
         pairings_created = 0
 
-        # Group teams by points
-        points_groups = {}
-        for team in standings:
-            points = team['points']
-            if points not in points_groups:
-                points_groups[points] = []
-            points_groups[points].append(team)
+        # ROUND 1: Tennis-style seeding (1 vs 96, 2 vs 95, etc.)
+        if next_round == 1:
+            teams = db.get_all_teams()
+            # Sort by initial rank
+            teams.sort(key=lambda x: x['rank'])
 
-        # Sort points in descending order
-        sorted_points = sorted(points_groups.keys(), reverse=True)
+            n = len(teams)
+            for i in range(n // 2):
+                team1 = teams[i]
+                team2 = teams[n - 1 - i]
 
-        # Try to pair teams within same point group
-        carry_over = []
+                # Higher ranked team (lower rank number) plays at home
+                db.add_pairing(next_round, team1['name'], team2['name'], team1_home=True)
+                pairings_created += 1
 
-        for points in sorted_points:
-            teams_in_group = points_groups[points] + carry_over
+            return jsonify({
+                'success': True,
+                'round': next_round,
+                'pairings_created': pairings_created,
+                'pairing_method': 'Tennis-style seeding (1 vs 96, 2 vs 95, ...)'
+            })
+
+        # ROUNDS 2-8: Swiss system with home/away balance
+        else:
+            # Group teams by points
+            points_groups = {}
+            for team in standings:
+                points = team['points']
+                if points not in points_groups:
+                    points_groups[points] = []
+                points_groups[points].append(team)
+
+            # Sort points in descending order
+            sorted_points = sorted(points_groups.keys(), reverse=True)
+
+            # Try to pair teams within same point group
             carry_over = []
 
-            # Try to pair teams in this group
-            while len(teams_in_group) >= 2:
-                team1 = teams_in_group[0]
+            for points in sorted_points:
+                teams_in_group = points_groups[points] + carry_over
+                carry_over = []
 
-                # Find a suitable opponent that hasn't been faced before
-                opponent_found = False
-                for i in range(1, len(teams_in_group)):
-                    team2 = teams_in_group[i]
+                # Try to pair teams in this group
+                while len(teams_in_group) >= 2:
+                    team1 = teams_in_group[0]
 
-                    # Check if teams have already played
-                    if not db.get_past_pairings(team1['name'], team2['name']):
-                        # Pair these teams
-                        db.add_pairing(next_round, team1['name'], team2['name'])
-                        pairings_created += 1
+                    # Find a suitable opponent that hasn't been faced before
+                    opponent_found = False
+                    for i in range(1, len(teams_in_group)):
+                        team2 = teams_in_group[i]
 
-                        # Remove from group
-                        teams_in_group.pop(i)
-                        teams_in_group.pop(0)
+                        # Check if teams have already played
+                        if not db.get_past_pairings(team1['name'], team2['name']):
+                            # Determine home/away based on balance (each team needs 4 home, 4 away)
+                            team1_home_games = team1['home_games']
+                            team1_away_games = team1['away_games']
+                            team2_home_games = team2['home_games']
+                            team2_away_games = team2['away_games']
 
-                        opponent_found = True
-                        break
+                            # Decide who plays at home
+                            if team1_home_games < 4 and team2_away_games < 4:
+                                # team1 at home
+                                team1_home = True
+                            elif team1_away_games < 4 and team2_home_games < 4:
+                                # team2 at home (team1 away)
+                                team1_home = False
+                            elif team1_home_games < team1_away_games:
+                                # team1 needs more home games
+                                team1_home = True
+                            elif team2_home_games < team2_away_games:
+                                # team2 needs more home games
+                                team1_home = False
+                            else:
+                                # Default: alternate or random
+                                import random
+                                team1_home = random.choice([True, False])
 
-                if not opponent_found:
-                    # Can't pair this team in current group, carry over
-                    carry_over.append(teams_in_group.pop(0))
+                            # Pair these teams
+                            db.add_pairing(next_round, team1['name'], team2['name'], team1_home=team1_home)
+                            pairings_created += 1
 
-            # Add remaining team to carry over
-            if teams_in_group:
-                carry_over.extend(teams_in_group)
+                            # Remove from group
+                            teams_in_group.pop(i)
+                            teams_in_group.pop(0)
 
-        # Handle remaining teams by pairing them even if they've played before
-        while len(carry_over) >= 2:
-            team1 = carry_over.pop(0)
-            team2 = carry_over.pop(0)
-            db.add_pairing(next_round, team1['name'], team2['name'])
-            pairings_created += 1
+                            opponent_found = True
+                            break
 
-        # If odd number of teams, one gets a bye (forfeit win)
-        if carry_over:
-            team = carry_over[0]
-            # Give the team a 3-0 win (bye)
-            db.add_pairing(next_round, team['name'], 'BYE')
-            # Simulate automatic win
-            pairings = db.get_pairings(next_round)
-            bye_pairing = [p for p in pairings if p['team2'] == 'BYE'][0]
-            db.update_pairing_result(bye_pairing['id'], 3, 0)
-            pairings_created += 1
+                    if not opponent_found:
+                        # Can't pair this team in current group, carry over
+                        carry_over.append(teams_in_group.pop(0))
 
-        return jsonify({
-            'success': True,
-            'round': next_round,
-            'pairings_created': pairings_created
-        })
+                # Add remaining team to carry over
+                if teams_in_group:
+                    carry_over.extend(teams_in_group)
+
+            # Handle remaining teams by pairing them even if they've played before
+            while len(carry_over) >= 2:
+                team1 = carry_over.pop(0)
+                team2 = carry_over.pop(0)
+
+                # Determine home/away
+                team1_home = team1['home_games'] <= team1['away_games']
+
+                db.add_pairing(next_round, team1['name'], team2['name'], team1_home=team1_home)
+                pairings_created += 1
+
+            # If odd number of teams, one gets a bye (forfeit win)
+            if carry_over:
+                team = carry_over[0]
+                # Give the team a 3-0 win (bye)
+                db.add_pairing(next_round, team['name'], 'BYE', team1_home=True)
+                # Simulate automatic win
+                pairings = db.get_pairings(next_round)
+                bye_pairing = [p for p in pairings if p['team2'] == 'BYE'][0]
+                db.update_pairing_result(bye_pairing['id'], 3, 0)
+                pairings_created += 1
+
+            return jsonify({
+                'success': True,
+                'round': next_round,
+                'pairings_created': pairings_created,
+                'pairing_method': 'Swiss system with home/away balance'
+            })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

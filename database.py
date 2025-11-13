@@ -57,6 +57,8 @@ class Database:
             goals_for INTEGER DEFAULT 0,
             goals_against INTEGER DEFAULT 0,
             goal_difference INTEGER DEFAULT 0,
+            home_games INTEGER DEFAULT 0,
+            away_games INTEGER DEFAULT 0,
             FOREIGN KEY (name) REFERENCES teams(name)
         )
         ''')
@@ -71,6 +73,7 @@ class Database:
             goals1 INTEGER DEFAULT NULL,
             goals2 INTEGER DEFAULT NULL,
             simulated BOOLEAN DEFAULT 0,
+            team1_home BOOLEAN DEFAULT 1,
             FOREIGN KEY (team1) REFERENCES teams(name),
             FOREIGN KEY (team2) REFERENCES teams(name)
         )
@@ -106,8 +109,9 @@ class Database:
 
             cursor.execute('''
             INSERT INTO standings (name, rank, points, played, won, drawn, lost,
-                                 goals_for, goals_against, goal_difference)
-            VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0)
+                                 goals_for, goals_against, goal_difference,
+                                 home_games, away_games)
+            VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             ''', (team['name'], team['rank']))
 
         conn.commit()
@@ -170,14 +174,14 @@ class Database:
         conn.close()
         return pairings
 
-    def add_pairing(self, round_num: int, team1: str, team2: str):
+    def add_pairing(self, round_num: int, team1: str, team2: str, team1_home: bool = True):
         """Add a new pairing"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
-        INSERT INTO pairings (round, team1, team2, simulated)
-        VALUES (?, ?, ?, 0)
-        ''', (round_num, team1, team2))
+        INSERT INTO pairings (round, team1, team2, simulated, team1_home)
+        VALUES (?, ?, ?, 0, ?)
+        ''', (round_num, team1, team2, 1 if team1_home else 0))
         conn.commit()
         conn.close()
 
@@ -187,13 +191,13 @@ class Database:
         cursor = conn.cursor()
 
         # Get pairing info
-        cursor.execute('SELECT team1, team2 FROM pairings WHERE id = ?', (pairing_id,))
+        cursor.execute('SELECT team1, team2, team1_home FROM pairings WHERE id = ?', (pairing_id,))
         row = cursor.fetchone()
         if not row:
             conn.close()
             return
 
-        team1, team2 = row['team1'], row['team2']
+        team1, team2, team1_home = row['team1'], row['team2'], row['team1_home']
 
         # Update pairing
         cursor.execute('''
@@ -229,9 +233,12 @@ class Database:
             lost = lost + ?,
             goals_for = goals_for + ?,
             goals_against = goals_against + ?,
-            goal_difference = goal_difference + (? - ?)
+            goal_difference = goal_difference + (? - ?),
+            home_games = home_games + ?,
+            away_games = away_games + ?
         WHERE name = ?
-        ''', (points1, won1, drawn1, lost1, goals1, goals2, goals1, goals2, team1))
+        ''', (points1, won1, drawn1, lost1, goals1, goals2, goals1, goals2,
+              1 if team1_home else 0, 0 if team1_home else 1, team1))
 
         # Update team2 standings
         cursor.execute('''
@@ -243,9 +250,12 @@ class Database:
             lost = lost + ?,
             goals_for = goals_for + ?,
             goals_against = goals_against + ?,
-            goal_difference = goal_difference + (? - ?)
+            goal_difference = goal_difference + (? - ?),
+            home_games = home_games + ?,
+            away_games = away_games + ?
         WHERE name = ?
-        ''', (points2, won2, drawn2, lost2, goals2, goals1, goals2, goals1, team2))
+        ''', (points2, won2, drawn2, lost2, goals2, goals1, goals2, goals1,
+              0 if team1_home else 1, 1 if team1_home else 0, team2))
 
         conn.commit()
         conn.close()
