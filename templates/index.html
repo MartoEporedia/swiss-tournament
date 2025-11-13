@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiss Tournament Simulator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🏆 Swiss Tournament Simulator</h1>
+            <p class="subtitle">European Football Competition Format</p>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item">
+                <span class="stat-label">Current Round</span>
+                <span class="stat-value" id="currentRound">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Matches</span>
+                <span class="stat-value" id="totalMatches">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Goals</span>
+                <span class="stat-value" id="totalGoals">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Avg Goals/Match</span>
+                <span class="stat-value" id="avgGoals">0</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="initTournament()">🔄 Reset Tournament</button>
+            <button class="btn btn-success" onclick="createPairings()">📋 Create Pairings</button>
+            <button class="btn btn-warning" onclick="simulateMatches()">⚽ Simulate Matches</button>
+            <button class="btn btn-info" onclick="generatePlayoffs()">🎯 Generate Playoffs</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('standings')">📊 Standings</button>
+            <button class="tab" onclick="showTab('matches')">⚽ Matches</button>
+            <button class="tab" onclick="showTab('playoffs')">🏆 Playoffs</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="standingsTab" class="tab-content active">
+            <div class="section-header">
+                <h2>Current Standings</h2>
+                <p>Teams ordered by: Points → Goal Difference → Goals Scored</p>
+            </div>
+
+            <div class="category-legend">
+                <div class="legend-item">
+                    <span class="color-box" style="background: #0066cc;"></span>
+                    <span>Champions League (1-24)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="color-box" style="background: #ff6600;"></span>
+                    <span>Europa League (25-48)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="color-box" style="background: #00cc66;"></span>
+                    <span>Conference League (49-80)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="color-box" style="background: #cc0000;"></span>
+                    <span>Eliminated (81+)</span>
+                </div>
+            </div>
+
+            <div id="standingsContent" class="standings-table">
+                <!-- Standings will be loaded here -->
+            </div>
+        </div>
+
+        <div id="matchesTab" class="tab-content">
+            <div class="section-header">
+                <h2>Match Results</h2>
+                <div class="round-selector">
+                    <label>Round:</label>
+                    <select id="roundSelector" onchange="loadMatches()">
+                        <option value="">All Rounds</option>
+                        <option value="1">Round 1</option>
+                        <option value="2">Round 2</option>
+                        <option value="3">Round 3</option>
+                        <option value="4">Round 4</option>
+                        <option value="5">Round 5</option>
+                        <option value="6">Round 6</option>
+                        <option value="7">Round 7</option>
+                        <option value="8">Round 8</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="matchesContent" class="matches-container">
+                <!-- Matches will be loaded here -->
+            </div>
+        </div>
+
+        <div id="playoffsTab" class="tab-content">
+            <div class="section-header">
+                <h2>Playoff Pairings</h2>
+                <p>Knockout stage matchups by competition</p>
+            </div>
+
+            <div id="playoffsContent">
+                <!-- Playoffs will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
